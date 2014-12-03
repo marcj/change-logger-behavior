@@ -103,10 +103,6 @@ class ChangeLoggerBehavior extends Behavior
      */
     protected function appendGetterSetterMethods(ObjectBuilder $builder, &$script, $column, $affix)
     {
-        if ('true' !== $this->getParameter('comment')) {
-            return;
-        }
-
         $name = lcfirst($column->getPhpName()) . $affix;
         $methodSetName = 'set' . $column->getPhpName() . $affix;
         $methodGetName = 'get' . $column->getPhpName() . $affix;
