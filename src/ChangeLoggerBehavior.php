@@ -328,7 +328,7 @@ if (\$$varName) {
         }
 
         // create the foreign key
-        $fk = new ForeignKey('origin');
+        $fk = new ForeignKey();
         $fk->setForeignTableCommonName($table->getCommonName());
         $fk->setForeignSchemaName($table->getSchema());
         $fk->setPhpName('Origin');
