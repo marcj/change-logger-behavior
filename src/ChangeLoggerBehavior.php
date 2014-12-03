@@ -253,7 +253,7 @@ if (\$$varName) {
             } else {
                 throw new InvalidArgumentException(
                     sprintf(
-                        'ChangeLogger behavior can not find `%s` column at table ``.',
+                        'ChangeLogger behavior can not find `%s` column at table `%s`.',
                         $columnName,
                         $this->getTable()->getName()
                     )
