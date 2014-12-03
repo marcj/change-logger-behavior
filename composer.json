@@ -1,6 +1,6 @@
 {
   "name": "marcj/change-logger-behavior",
-  "description": "A behavior allowing you to log one or more columns in a extra loggin table like the versionable behavior for Propel2.",
+  "description": "A behavior allowing you to log one or more columns in a extra logging table like the versionable behavior for Propel2.",
   "require": {
     "propel/propel": "2.0.*@dev"
   },
@@ -17,5 +17,9 @@
       "name": "Marc J. Schmidt",
       "email": "marc@marcjschmidt.de"
     }
-  ]
+  ],
+  "extra": {
+    "name": "change_logger",
+    "class": "\\MJS\\ChangeLogger\\ChangeLoggerBehavior"
+  }
 }

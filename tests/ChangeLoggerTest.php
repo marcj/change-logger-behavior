@@ -7,7 +7,6 @@ use Propel\Tests\TestCase;
 
 class ChangeLoggerTest extends TestCase
 {
-
     public function setUp()
     {
         if (!class_exists('\ChangeloggerBehaviorSingle')) {
@@ -17,15 +16,17 @@ class ChangeLoggerTest extends TestCase
         <column name="id" required="true" primaryKey="true" autoIncrement="true" type="INTEGER" />
         <column name="title" type="VARCHAR" size="100" primaryString="true" />
         <column name="age" type="INTEGER" />
-        <behavior name="change_logger">
+        <behavior name="MJS\ChangeLogger\ChangeLoggerBehavior">
             <parameter name="log" value="title"/>
+            <parameter name="comment" value="true"/>
+            <parameter name="created_by" value="true"/>
         </behavior>
     </table>
     <table name="changelogger_behavior_multiple">
         <column name="id" required="true" primaryKey="true" autoIncrement="true" type="INTEGER" />
         <column name="title" type="VARCHAR" size="100" primaryString="true" />
         <column name="age" type="INTEGER" />
-        <behavior name="change_logger">
+        <behavior name="MJS\ChangeLogger\ChangeLoggerBehavior">
             <parameter name="log" value="title, age"/>
         </behavior>
     </table>
@@ -50,11 +51,16 @@ EOF;
         $this->assertEquals(0, \ChangeloggerBehaviorSingleTitleLogQuery::create()->count());
 
         $item->setTitle('Teschd');
+        $item->setTitleChangeComment('Sohalt.');
+        $item->setTitleChangeBy('Me');
         $item->save();
 
         //initial save saves already a log entry
         $this->assertEquals(1, \ChangeloggerBehaviorSingleTitleLogQuery::create()->count());
-        $this->assertEquals(1, \ChangeloggerBehaviorSingleTitleLogQuery::create()->findOne()->getVersion());
+        $changeLog = \ChangeloggerBehaviorSingleTitleLogQuery::create()->findOne();
+        $this->assertEquals(1, $changeLog->getVersion());
+        $this->assertEquals('Sohalt.', $changeLog->getLogComment());
+        $this->assertEquals('Me', $changeLog->getLogCreatedBy());
 
         $item->setAge(2);
         $item->save();

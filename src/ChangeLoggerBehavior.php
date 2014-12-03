@@ -21,9 +21,11 @@ class ChangeLoggerBehavior extends Behavior
         'created_at' => 'false',
         'created_by' => 'false',
         'comment' => 'false',
+
         'created_at_column' => 'log_created_at',
         'created_by_column' => 'log_created_by',
         'comment_column' => 'log_comment',
+
         'version_column' => 'version',
         'log' => ''
     );
@@ -38,17 +40,96 @@ class ChangeLoggerBehavior extends Behavior
         $this->addLogTables();
     }
 
+    public function objectAttributes($builder)
+    {
+        $script = '';
+
+        if ('true' === $this->getParameter('comment')) {
+            foreach ($this->getColumns() as $column) {
+                $name = lcfirst($column->getPhpName());
+                $script .= "
+    /**
+     * Is used as comment for ChangeLoggerBehavior.
+     *
+     * @var string
+     */
+    protected \${$name}ChangeComment;
+";
+            }
+        }
+
+        if ('true' === $this->getParameter('created_by')) {
+            foreach ($this->getColumns() as $column) {
+                $name = lcfirst($column->getPhpName());
+
+                $script .= "
+    /**
+     * Is used as createdBy for ChangeLoggerBehavior.
+     *
+     * @var string
+     */
+    protected \${$name}ChangeBy;
+";
+            }
+        }
+
+        return $script;
+    }
+
     public function objectMethods($builder)
     {
         $script = '';
 
         foreach ($this->getColumns() as $column) {
             $this->appendAddVersionMethod($builder, $script, $column);
+
+
+            if ('true' === $this->getParameter('comment')) {
+                $this->appendGetterSetterMethods($builder, $script, $column, 'ChangeComment');
+            }
+
+            if ('true' === $this->getParameter('created_by')) {
+                $this->appendGetterSetterMethods($builder, $script, $column, 'ChangeBy');
+            }
         }
 
         return $script;
     }
 
+    /**
+     * @param ObjectBuilder $builder
+     * @param string        $script
+     * @param Column        $column
+     */
+    protected function appendGetterSetterMethods(ObjectBuilder $builder, &$script, $column, $affix)
+    {
+        if ('true' !== $this->getParameter('comment')) {
+            return;
+        }
+
+        $name = lcfirst($column->getPhpName()) . $affix;
+        $methodSetName = 'set' . $column->getPhpName() . $affix;
+        $methodGetName = 'get' . $column->getPhpName() . $affix;
+
+        $script .= "
+/**
+ * @param string \$comment
+ */
+public function $methodSetName(\$comment)
+{
+    \$this->{$name} = \$comment;
+}";
+
+        $script .= "
+/**
+ * @param string \$comment
+ */
+public function $methodGetName()
+{
+    return \$this->{$name};
+}";
+
+    }
     /**
      * @param ObjectBuilder $builder
      * @param string        $script
@@ -85,6 +166,22 @@ public function $methodName()
             $createdAtColumn = $logTable->getColumn($this->getParameter('created_at_column'));
             $script .= "
     \$log->set{$createdAtColumn->getPhpName()}(time());
+";
+        }
+
+        if ('true' === $this->getParameter('created_by')) {
+            $createdByColumn = $logTable->getColumn($this->getParameter('created_by_column'));
+            $methodGetName = 'get' . $column->getPhpName() . 'ChangeBy';
+            $script .= "
+    \$log->set{$createdByColumn->getPhpName()}(\$this->$methodGetName());
+";
+        }
+
+        if ('true' === $this->getParameter('comment')) {
+            $commentColumn = $logTable->getColumn($this->getParameter('comment_column'));
+            $methodGetName = 'get' . $column->getPhpName() . 'ChangeComment';
+            $script .= "
+    \$log->set{$commentColumn->getPhpName()}(\$this->$methodGetName());
 ";
         }
 
