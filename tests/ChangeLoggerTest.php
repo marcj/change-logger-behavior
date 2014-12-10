@@ -81,6 +81,33 @@ EOF;
         $this->assertEquals('Changed', $lastVersion->getTitle());
     }
 
+    public function testMultipleCreatesFirstIfGiven()
+    {
+        \ChangeloggerBehaviorMultipleQuery::create()->deleteAll();
+        \ChangeloggerBehaviorMultipleTitleLogQuery::create()->deleteAll();
+
+        $this->assertTrue(class_exists('\ChangeloggerBehaviorMultiple'));
+        $this->assertTrue(class_exists('\ChangeloggerBehaviorMultipleTitleLog'));
+        $this->assertTrue(class_exists('\ChangeloggerBehaviorMultipleAgeLog'));
+
+        $item = new \ChangeloggerBehaviorMultiple();
+
+        $this->assertTrue(method_exists($item, 'addTitleVersion'));
+        $this->assertTrue(method_exists($item, 'addAgeVersion'));
+
+        $item->setTitle('Teschd');
+        $item->save();
+
+        //initial save saves already a log entry
+        $this->assertEquals(1, \ChangeloggerBehaviorMultipleTitleLogQuery::create()->count());
+        $this->assertEquals(1, \ChangeloggerBehaviorMultipleTitleLogQuery::create()->findOne()->getVersion());
+        $lastVersion = \ChangeloggerBehaviorMultipleTitleLogQuery::create()->orderByVersion('desc')->findOne();
+        $this->assertEquals(1, $lastVersion->getVersion());
+        $this->assertEquals('Teschd', $lastVersion->getTitle());
+        $this->assertEquals(0, \ChangeloggerBehaviorMultipleAgeLogQuery::create()->count());
+
+    }
+
     public function testMultiple()
     {
         \ChangeloggerBehaviorMultipleQuery::create()->deleteAll();
