@@ -200,6 +200,26 @@ public function $methodName()
      *
      * @return string
      */
+    public function postInsert(ObjectBuilder $builder)
+    {
+        $hooks = '';
+
+        foreach ($this->getColumns() as $column) {
+            $varName = ucfirst($column->getPhpName());
+            $hooks .= "
+if (\$this->get{$varName}() !== null) {
+    \$this->add{$column->getPhpName()}Version();
+}";
+        }
+
+        return $hooks;
+    }
+
+    /**
+     * @param ObjectBuilder $builder
+     *
+     * @return string
+     */
     public function postUpdate(ObjectBuilder $builder)
     {
         $hooks = '';
