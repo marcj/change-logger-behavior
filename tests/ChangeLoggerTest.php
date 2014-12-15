@@ -47,7 +47,10 @@ EOF;
         $item = new \ChangeloggerBehaviorSingle();
 
         $this->assertTrue(method_exists($item, 'addTitleVersion'));
+        $item->setTitle('Initial');
         $item->save();
+
+        //initial save doesn't save a log entry
         $this->assertEquals(0, \ChangeloggerBehaviorSingleTitleLogQuery::create()->count());
 
         $item->setTitle('Teschd');
@@ -55,12 +58,13 @@ EOF;
         $item->setTitleChangeBy('Me');
         $item->save();
 
-        //initial save saves already a log entry
+        //second save saves a log entry
         $this->assertEquals(1, \ChangeloggerBehaviorSingleTitleLogQuery::create()->count());
         $changeLog = \ChangeloggerBehaviorSingleTitleLogQuery::create()->findOne();
         $this->assertEquals(1, $changeLog->getVersion());
         $this->assertEquals('Sohalt.', $changeLog->getLogComment());
         $this->assertEquals('Me', $changeLog->getLogCreatedBy());
+        $this->assertEquals('Initial', $changeLog->getTitle());
 
         $item->setAge(2);
         $item->save();
@@ -69,7 +73,7 @@ EOF;
         $this->assertEquals(1, \ChangeloggerBehaviorSingleTitleLogQuery::create()->count());
         $lastVersion = \ChangeloggerBehaviorSingleTitleLogQuery::create()->orderByVersion('desc')->findOne();
         $this->assertEquals(1, $lastVersion->getVersion());
-        $this->assertEquals('Teschd', $lastVersion->getTitle());
+        $this->assertEquals('Initial', $lastVersion->getTitle());
 
         $item->setTitle('Changed');
         $item->save();
@@ -78,7 +82,31 @@ EOF;
         $this->assertEquals(2, \ChangeloggerBehaviorSingleTitleLogQuery::create()->count());
         $lastVersion = \ChangeloggerBehaviorSingleTitleLogQuery::create()->orderByVersion('desc')->findOne();
         $this->assertEquals(2, $lastVersion->getVersion());
-        $this->assertEquals('Changed', $lastVersion->getTitle());
+        $this->assertEquals('Teschd', $lastVersion->getTitle());
+    }
+
+    public function testFromQuery()
+    {
+        \ChangeloggerBehaviorSingleQuery::create()->deleteAll();
+        \ChangeloggerBehaviorSingleTitleLogQuery::create()->deleteAll();
+
+        $item = new \ChangeloggerBehaviorSingle();
+
+        $item->setTitle('Initial');
+        $item->save();
+
+        \Map\ChangeloggerBehaviorSingleTableMap::clearInstancePool();
+
+        $itemRetrieved = \ChangeloggerBehaviorSingleQuery::create()->findOne();
+        $this->assertNotSame($itemRetrieved, $item);
+
+        $itemRetrieved->setTitle('New Title');
+        $itemRetrieved->save();
+
+        $this->assertEquals(1, \ChangeloggerBehaviorSingleTitleLogQuery::create()->count());
+        $lastVersion = \ChangeloggerBehaviorSingleTitleLogQuery::create()->orderByVersion('desc')->findOne();
+        $this->assertEquals(1, $lastVersion->getVersion());
+        $this->assertEquals('Initial', $lastVersion->getTitle());
     }
 
     public function testMultiple()
@@ -94,7 +122,9 @@ EOF;
 
         $this->assertTrue(method_exists($item, 'addTitleVersion'));
         $this->assertTrue(method_exists($item, 'addAgeVersion'));
+        $item->setTitle('Initial');
         $item->save();
+
         $this->assertEquals(0, \ChangeloggerBehaviorMultipleTitleLogQuery::create()->count());
 
         $item->setTitle('Teschd');
@@ -105,7 +135,7 @@ EOF;
         $this->assertEquals(1, \ChangeloggerBehaviorMultipleTitleLogQuery::create()->findOne()->getVersion());
         $lastVersion = \ChangeloggerBehaviorMultipleTitleLogQuery::create()->orderByVersion('desc')->findOne();
         $this->assertEquals(1, $lastVersion->getVersion());
-        $this->assertEquals('Teschd', $lastVersion->getTitle());
+        $this->assertEquals('Initial', $lastVersion->getTitle());
         $this->assertEquals(0, \ChangeloggerBehaviorMultipleAgeLogQuery::create()->count());
 
         $item->setAge(2);
@@ -115,7 +145,14 @@ EOF;
         $this->assertEquals(1, \ChangeloggerBehaviorMultipleTitleLogQuery::create()->count());
         $lastVersion = \ChangeloggerBehaviorMultipleTitleLogQuery::create()->orderByVersion('desc')->findOne();
         $this->assertEquals(1, $lastVersion->getVersion());
-        $this->assertEquals('Teschd', $lastVersion->getTitle());
+        $this->assertEquals('Initial', $lastVersion->getTitle());
+
+        //`age` is empty, so we have no log record
+        $this->assertEquals(0, \ChangeloggerBehaviorMultipleAgeLogQuery::create()->count());
+
+        $item->setTitle('Changed');
+        $item->setAge(null);
+        $item->save();
 
         //we have now additional a `age` log entry
         $this->assertEquals(1, \ChangeloggerBehaviorMultipleAgeLogQuery::create()->count());
@@ -123,14 +160,11 @@ EOF;
         $this->assertEquals(1, $lastVersion->getVersion());
         $this->assertEquals(2, $lastVersion->getAge());
 
-        $item->setTitle('Changed');
-        $item->save();
-
         //title has been changed, we have now two versions
         $this->assertEquals(2, \ChangeloggerBehaviorMultipleTitleLogQuery::create()->count());
         $lastVersion = \ChangeloggerBehaviorMultipleTitleLogQuery::create()->orderByVersion('desc')->findOne();
         $this->assertEquals(2, $lastVersion->getVersion());
-        $this->assertEquals('Changed', $lastVersion->getTitle());
+        $this->assertEquals('Teschd', $lastVersion->getTitle());
 
         //age has not changed anything, so check as above
         $this->assertEquals(1, \ChangeloggerBehaviorMultipleAgeLogQuery::create()->count());

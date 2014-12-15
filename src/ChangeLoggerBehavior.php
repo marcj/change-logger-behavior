@@ -48,12 +48,12 @@ class ChangeLoggerBehavior extends Behavior
             foreach ($this->getColumns() as $column) {
                 $name = lcfirst($column->getPhpName());
                 $script .= "
-    /**
-     * Is used as comment for ChangeLoggerBehavior.
-     *
-     * @var string
-     */
-    protected \${$name}ChangeComment;
+/**
+ * Is used as comment for ChangeLoggerBehavior.
+ *
+ * @var string
+ */
+protected \${$name}ChangeComment;
 ";
             }
         }
@@ -63,15 +63,23 @@ class ChangeLoggerBehavior extends Behavior
                 $name = lcfirst($column->getPhpName());
 
                 $script .= "
-    /**
-     * Is used as createdBy for ChangeLoggerBehavior.
-     *
-     * @var string
-     */
-    protected \${$name}ChangeBy;
+/**
+ * Is used as createdBy for ChangeLoggerBehavior.
+ *
+ * @var string
+ */
+protected \${$name}ChangeBy;
 ";
             }
         }
+
+        $script .= "
+/**
+  *
+  * @var mixed[]
+  */
+protected \$changeLoggerTracker = [];
+";
 
         return $script;
     }
@@ -142,12 +150,18 @@ public function $methodGetName()
         $logARClassName = $builder->getClassNameFromBuilder($builder->getNewStubObjectBuilder($logTable));
         $logARQueryName = $builder->getNewStubQueryBuilder($logTable)->getFullyQualifiedClassName();
 
+        $varName = lcfirst($column->getPhpName());
+
         $script .= "
 /**
- * @return $logARClassName model instance of saved log ($logTableName)
+ * @return $logARClassName|false model instance of saved log ($logTableName) or false if nothing was changed.
  */
 public function $methodName()
 {
+    if (!isset(\$this->changeLoggerTracker['$varName'])) {
+        return false;
+    }
+
     \$log = new {$logARClassName}();";
 
         foreach ($this->getTable()->getPrimaryKey() as $col) {
@@ -156,7 +170,7 @@ public function $methodName()
         }
 
         $script .= "
-    \$log->set" . $column->getPhpName() . "(\$this->get" . $column->getPhpName() . "());";
+    \$log->set" . $column->getPhpName() . "(\$this->changeLoggerTracker['$varName']);";
 
         if ('true' === $this->getParameter('created_at')) {
             $createdAtColumn = $logTable->getColumn($this->getParameter('created_at_column'));
@@ -190,6 +204,7 @@ public function $methodName()
     \$log->setVersion(\$lastVersion ? \$lastVersion->getVersion() + 1 : 1);
     \$log->save();
 
+    \$this->changeLoggerTracker['$varName'] = \$this->get{$column->getPhpName()}();
     return \$log;
 }
 ";
@@ -215,7 +230,6 @@ if (\$$varName) {
         return $hooks;
     }
 
-
     /**
      * @param ObjectBuilder $builder
      *
@@ -229,6 +243,34 @@ if (\$$varName) {
             $varName = 'was' . $column->getPhpName() . 'Changed';
             $hooks .= "
 \$$varName = \$this->isColumnModified({$column->getFQConstantName()});";
+        }
+
+        return $hooks;
+    }
+
+    public function postSave(ObjectBuilder $builder)
+    {
+        $hooks = '';
+
+        foreach ($this->getColumns() as $column) {
+            $getter = 'get' . $column->getPhpName();
+            $varName = lcfirst($column->getPhpName());
+            $hooks .= "
+\$this->changeLoggerTracker['$varName'] = \$this->{$getter}();";
+        }
+
+        return $hooks;
+    }
+
+    public function postHydrate(ObjectBuilder $builder)
+    {
+        $hooks = '';
+
+        foreach ($this->getColumns() as $column) {
+            $getter = 'get' . $column->getPhpName();
+            $varName = lcfirst($column->getPhpName());
+            $hooks .= "
+\$this->changeLoggerTracker['$varName'] = \$this->{$getter}();";
         }
 
         return $hooks;
